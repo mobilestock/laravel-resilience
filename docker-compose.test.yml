@@ -1,0 +1,8 @@
+services:
+  laravel-resilience:
+    extends:
+      file: docker-compose.base.yml
+      service: pest-base
+    volumes:
+      - './packages/laravel-resilience:/laravel-resilience'
+    working_dir: /laravel-resilience

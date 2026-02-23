@@ -1,0 +1,43 @@
+{
+  "name": "mobilestock/laravel-resilience",
+  "description": "Laravel Resilience provides tools to handle failures and improve application reliability, such as circuit breakers, retries, and timeouts.",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "MobileStock",
+      "email": "fabio@mobilestock.com.br"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "MobileStock\\LaravelResilience\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "require": {
+    "php": ">=8.3",
+    "illuminate/support": "^11.0",
+    "illuminate/contracts": "^11.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "MobileStock\\LaravelResilience\\Providers\\ResilienceServiceProvider"
+      ]
+    }
+  },
+  "require-dev": {
+    "pestphp/pest": "^3.5",
+    "orchestra/testbench": "^9.5"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  }
+}
