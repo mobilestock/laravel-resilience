@@ -18,5 +18,6 @@ return [
         MobileStock\LaravelResilience\Queue\Middleware\FailJobOnExceptionMiddleware::class,
         MobileStock\LaravelResilience\Queue\Middleware\RetryableExceptionMiddleware::class,
         MobileStock\LaravelResilience\Queue\Middleware\HttpClientRetryMiddleware::class,
+        MobileStock\LaravelResilience\Queue\Middleware\RetryDeadlockMiddleware::class,
     ],
 ];
