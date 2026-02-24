@@ -1,90 +1,76 @@
 <?php
 
-namespace Tests\Unit\Queue\Middleware;
-
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use MobileStock\LaravelResilience\Queue\Middleware\HttpClientRetryMiddleware;
-use Mockery;
-use Tests\TestCase;
 
-class HttpClientRetryMiddlewareTest extends TestCase
-{
-    private HttpClientRetryMiddleware $middleware;
+it('should release job when 429 response exception is thrown', function () {
+    $middleware = new HttpClientRetryMiddleware();
+    $job = Mockery::spy();
+    $job->shouldReceive('attempts')->andReturn(2);
+    $response = Http::fake([
+        '*' => Http::response([], 429),
+    ])->get('http://dummy.com');
+    $exception = new RequestException($response);
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->middleware = new HttpClientRetryMiddleware();
-    }
+    $middleware->handle($job, $next);
 
-    public function testShouldReleaseJobWhen429ResponseExceptionIsThrown(): void
-    {
-        $job = Mockery::spy();
-        $job->shouldReceive('attempts')->andReturn(2);
-        $response = Http::fake([
-            '*' => Http::response([], 429),
-        ])->get('http://dummy.com');
-        $exception = new RequestException($response);
-        $next = function () use ($exception) {
-            throw $exception;
-        };
+    $job->shouldHaveReceived('release')
+        ->once()
+        ->with(Mockery::on(fn($delay) => $delay >= 4 && $delay <= 6));
+});
 
-        $this->middleware->handle($job, $next);
+it('should release job using retry-after header when present', function () {
+    $middleware = new HttpClientRetryMiddleware();
+    $job = Mockery::spy();
+    $response = Http::fake([
+        '*' => Http::response([], 429, ['Retry-After' => '60']),
+    ])->get('http://dummy.com');
+    $exception = new RequestException($response);
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-        $job->shouldHaveReceived('release')
-            ->once()
-            ->with(Mockery::on(fn($delay) => $delay >= 4 && $delay <= 6));
-    }
+    $middleware->handle($job, $next);
 
-    public function testShouldReleaseJobUsingRetryAfterHeaderWhenPresent(): void
-    {
-        $job = Mockery::spy();
-        $response = Http::fake([
-            '*' => Http::response([], 429, ['Retry-After' => '60']),
-        ])->get('http://dummy.com');
-        $exception = new RequestException($response);
-        $next = function () use ($exception) {
-            throw $exception;
-        };
+    $job->shouldHaveReceived('release')->once()->with(60);
+});
 
-        $this->middleware->handle($job, $next);
+it('should release job using retry-after header date when present', function () {
+    $middleware = new HttpClientRetryMiddleware();
+    $job = Mockery::spy();
+    $retryDate = (new DateTimeImmutable('+60 seconds'))->format(DateTimeInterface::RFC1123);
+    $response = Http::fake([
+        '*' => Http::response([], 429, ['Retry-After' => $retryDate]),
+    ])->get('http://dummy.com');
+    $exception = new RequestException($response);
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-        $job->shouldHaveReceived('release')->once()->with(60);
-    }
+    $middleware->handle($job, $next);
 
-    public function testShouldReleaseJobUsingRetryAfterHeaderDateWhenPresent(): void
-    {
-        $job = Mockery::spy();
-        $retryDate = (new \DateTimeImmutable('+60 seconds'))->format(\DateTimeInterface::RFC1123);
-        $response = Http::fake([
-            '*' => Http::response([], 429, ['Retry-After' => $retryDate]),
-        ])->get('http://dummy.com');
-        $exception = new RequestException($response);
-        $next = function () use ($exception) {
-            throw $exception;
-        };
+    $job->shouldHaveReceived('release')
+        ->once()
+        ->with(Mockery::on(fn($delay) => $delay >= 59 && $delay <= 61));
+});
 
-        $this->middleware->handle($job, $next);
+it('should rethrow exception when non 429 response is received', function () {
+    $middleware = new HttpClientRetryMiddleware();
+    $job = Mockery::spy();
+    $response = Http::fake([
+        '*' => Http::response([], 500),
+    ])->get('http://dummy.com');
+    $exception = new RequestException($response);
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-        $job->shouldHaveReceived('release')
-            ->once()
-            ->with(Mockery::on(fn($delay) => $delay >= 59 && $delay <= 61));
-    }
+    $call = fn() => $middleware->handle($job, $next);
 
-    public function testShouldRethrowExceptionWhenNon429ResponseIsReceived(): void
-    {
-        $job = Mockery::spy();
-        $response = Http::fake([
-            '*' => Http::response([], 500),
-        ])->get('http://dummy.com');
-        $exception = new RequestException($response);
-        $next = function () use ($exception) {
-            throw $exception;
-        };
-
-        expect(fn() => $this->middleware->handle($job, $next))->toThrow(RequestException::class);
-
-        $job->shouldNotHaveReceived('fail');
-    }
-}
+    expect($call)->toThrow(RequestException::class);
+    $job->shouldNotHaveReceived('fail');
+});

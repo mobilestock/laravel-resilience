@@ -1,46 +1,32 @@
 <?php
 
-namespace Tests\Unit\Queue\Middleware;
-
 use MobileStock\LaravelResilience\Contracts\RetryableException;
 use MobileStock\LaravelResilience\Queue\Middleware\RetryableExceptionMiddleware;
-use Mockery;
-use Tests\TestCase;
 
-class RetryableExceptionMiddlewareTest extends TestCase
-{
-    private RetryableExceptionMiddleware $middleware;
+it('should release job when retryable exception is thrown', function () {
+    $middleware = new RetryableExceptionMiddleware();
+    $job = Mockery::spy();
+    $job->shouldReceive('attempts')->andReturn(1);
+    $exception = new class extends Exception implements RetryableException {};
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->middleware = new RetryableExceptionMiddleware();
-    }
+    $middleware->handle($job, $next);
 
-    public function testShouldReleaseJobWhenRetryableExceptionIsThrown(): void
-    {
-        $job = Mockery::spy();
-        $job->shouldReceive('attempts')->andReturn(1);
-        $exception = new class extends \Exception implements RetryableException {};
-        $next = function () use ($exception) {
-            throw $exception;
-        };
+    $job->shouldHaveReceived('release')->once()->with(Mockery::type('int'));
+});
 
-        $this->middleware->handle($job, $next);
+it('should fail job when non retryable exception is thrown', function () {
+    $middleware = new RetryableExceptionMiddleware();
+    $job = Mockery::spy();
+    $exception = new Exception('Normal exception');
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-        $job->shouldHaveReceived('release')->once()->with(Mockery::type('int'));
-    }
+    $call = fn() => $middleware->handle($job, $next);
 
-    public function testShouldFailJobWhenNonRetryableExceptionIsThrown(): void
-    {
-        $job = Mockery::spy();
-        $exception = new \Exception('Normal exception');
-        $next = function () use ($exception) {
-            throw $exception;
-        };
-
-        expect(fn() => $this->middleware->handle($job, $next))->toThrow(\Exception::class, 'Normal exception');
-
-        $job->shouldNotHaveReceived('fail');
-    }
-}
+    expect($call)->toThrow(Exception::class, 'Normal exception');
+    $job->shouldNotHaveReceived('fail');
+});

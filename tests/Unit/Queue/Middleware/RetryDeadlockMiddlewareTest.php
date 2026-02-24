@@ -1,69 +1,50 @@
 <?php
 
-namespace Tests\Unit\Queue\Middleware;
-
 use Illuminate\Database\QueryException;
 use MobileStock\LaravelResilience\Queue\Middleware\RetryDeadlockMiddleware;
-use Mockery;
-use Tests\TestCase;
 
-class RetryDeadlockMiddlewareTest extends TestCase
-{
-    private RetryDeadlockMiddleware $middleware;
+it('should release job when deadlock occurs', function () {
+    $middleware = new RetryDeadlockMiddleware();
+    $job = Mockery::spy();
+    $job->shouldReceive('attempts')->andReturn(1);
+    $pdoException = new PDOException();
+    $pdoException->errorInfo = ['40001', 1213];
+    $queryException = new QueryException('connection', 'sql', [], $pdoException);
+    $next = function () use ($queryException) {
+        throw $queryException;
+    };
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->middleware = new RetryDeadlockMiddleware();
-    }
+    $middleware->handle($job, $next);
 
-    public function testShouldReleaseJobWhenDeadlockOccurs(): void
-    {
-        $job = Mockery::spy();
-        $job->shouldReceive('attempts')->andReturn(1);
+    $job->shouldHaveReceived('release')->once()->with(Mockery::type('int'));
+});
 
-        $pdoException = new \PDOException();
-        $pdoException->errorInfo = ['40001', 1213];
+it('should not release job when query exception is not a deadlock', function () {
+    $middleware = new RetryDeadlockMiddleware();
+    $job = Mockery::spy();
+    $pdoException = new PDOException();
+    $pdoException->errorInfo = ['HY000', 1234];
+    $queryException = new QueryException('connection', 'sql', [], $pdoException);
+    $next = function () use ($queryException) {
+        throw $queryException;
+    };
 
-        $queryException = new QueryException('connection', 'sql', [], $pdoException);
+    $call = fn() => $middleware->handle($job, $next);
 
-        $next = function () use ($queryException) {
-            throw $queryException;
-        };
+    expect($call)->toThrow(QueryException::class);
+    $job->shouldNotHaveReceived('release');
+});
 
-        $this->middleware->handle($job, $next);
+it('should not release job when other exception is thrown', function () {
+    $middleware = new RetryDeadlockMiddleware();
+    $job = Mockery::spy();
+    $exception = new Exception('Normal exception');
+    $next = function () use ($exception) {
+        throw $exception;
+    };
 
-        $job->shouldHaveReceived('release')->once()->with(Mockery::type('int'));
-    }
+    $call = fn() => $middleware->handle($job, $next);
 
-    public function testShouldNotReleaseJobWhenQueryExceptionIsNotADeadlock(): void
-    {
-        $job = Mockery::spy();
-
-        $pdoException = new \PDOException();
-        $pdoException->errorInfo = ['HY000', 1234];
-
-        $queryException = new QueryException('connection', 'sql', [], $pdoException);
-
-        $next = function () use ($queryException) {
-            throw $queryException;
-        };
-
-        expect(fn() => $this->middleware->handle($job, $next))->toThrow(QueryException::class);
-
-        $job->shouldNotHaveReceived('release');
-    }
-
-    public function testShouldNotReleaseJobWhenOtherExceptionIsThrown(): void
-    {
-        $job = Mockery::spy();
-        $exception = new \Exception('Normal exception');
-        $next = function () use ($exception) {
-            throw $exception;
-        };
-
-        expect(fn() => $this->middleware->handle($job, $next))->toThrow(\Exception::class, 'Normal exception');
-
-        $job->shouldNotHaveReceived('release');
-    }
-}
+    expect($call)->toThrow(Exception::class, 'Normal exception');
+    $job->shouldNotHaveReceived('release');
+});
