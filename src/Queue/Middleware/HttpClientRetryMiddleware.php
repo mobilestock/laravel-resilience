@@ -2,6 +2,8 @@
 
 namespace MobileStock\LaravelResilience\Queue\Middleware;
 
+use DateTimeImmutable;
+use DateTimeInterface;
 use Illuminate\Http\Client\RequestException;
 use MobileStock\LaravelResilience\Queue\Middleware\Concerns\CalculatesBackoff;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,9 +42,9 @@ class HttpClientRetryMiddleware
         }
 
         if ($retryAfter) {
-            $date = \DateTimeImmutable::createFromFormat(\DateTimeInterface::RFC1123, $retryAfter);
+            $date = DateTimeImmutable::createFromFormat(DateTimeInterface::RFC1123, $retryAfter);
             if ($date) {
-                return max(0, $date->getTimestamp() - time());
+                return max(0, $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp());
             }
         }
 
