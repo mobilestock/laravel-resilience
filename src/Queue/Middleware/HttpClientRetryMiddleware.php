@@ -17,14 +17,17 @@ class HttpClientRetryMiddleware
         try {
             $next($job);
         } catch (RequestException $exception) {
-            if ($this->shouldRetry($exception)) {
-                $delay = $this->getRetryAfter($exception) ?? $this->calculateBackoff($job->attempts());
-                $job->release($delay);
-
-                return;
+            if (!$this->shouldRetry($exception)) {
+                throw $exception;
             }
 
-            throw $exception;
+            $delay = $this->getRetryAfter($exception);
+            if (!$delay) {
+                $attempts = $job->attempts();
+                $delay = $this->calculateBackoff($attempts);
+            }
+
+            $job->release($delay);
         }
     }
 
@@ -37,17 +40,25 @@ class HttpClientRetryMiddleware
     {
         $retryAfter = $exception->response?->header('Retry-After');
 
+        if (!$retryAfter) {
+            return null;
+        }
+
         if (is_numeric($retryAfter)) {
             return (int) $retryAfter;
         }
 
-        if ($retryAfter) {
-            $date = DateTimeImmutable::createFromFormat(DateTimeInterface::RFC1123, $retryAfter);
-            if ($date) {
-                return max(0, $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp());
-            }
+        return $this->parseRetryAfterDate($retryAfter);
+    }
+
+    protected function parseRetryAfterDate(string $retryAfter): ?int
+    {
+        $date = DateTimeImmutable::createFromFormat(DateTimeInterface::RFC1123, $retryAfter);
+
+        if (!$date) {
+            return null;
         }
 
-        return null;
+        return max(0, $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp());
     }
 }

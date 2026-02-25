@@ -17,16 +17,19 @@ class RetryDeadlockMiddleware
         try {
             $next($job);
         } catch (QueryException $exception) {
-            if (
-                ($exception->errorInfo[0] ?? null) === self::SQLSTATE_DEADLOCK &&
-                ($exception->errorInfo[1] ?? null) === self::MYSQL_ERROR_DEADLOCK
-            ) {
-                $job->release($this->calculateBackoff($job->attempts()));
+            if ($this->isDeadlock($exception)) {
+                $this->releaseWithBackoff($job);
 
                 return;
             }
 
             throw $exception;
         }
+    }
+
+    protected function isDeadlock(QueryException $exception): bool
+    {
+        return ($exception->errorInfo[0] ?? null) === self::SQLSTATE_DEADLOCK &&
+            ($exception->errorInfo[1] ?? null) === self::MYSQL_ERROR_DEADLOCK;
     }
 }

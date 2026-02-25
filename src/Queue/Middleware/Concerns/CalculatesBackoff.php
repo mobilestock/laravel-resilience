@@ -10,13 +10,18 @@ trait CalculatesBackoff
 
     public function calculateBackoff(int $attempts): int
     {
-        $delay = min(
-            static::BACKOFF_EXPONENTIAL_BASE ** $attempts,
-            static::BACKOFF_MAX_DELAY_IN_SECONDS
-        );
+        $delay = min(static::BACKOFF_EXPONENTIAL_BASE ** $attempts, static::BACKOFF_MAX_DELAY_IN_SECONDS);
 
         $jitter = random_int(0, (int) ($delay * static::BACKOFF_JITTER_FACTOR));
 
         return (int) ($delay + $jitter);
+    }
+
+    protected function releaseWithBackoff(object $job): void
+    {
+        $attempts = $job->attempts();
+        $backoff = $this->calculateBackoff($attempts);
+
+        $job->release($backoff);
     }
 }
