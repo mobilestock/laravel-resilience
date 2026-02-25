@@ -2,6 +2,7 @@
 
 use Illuminate\Database\QueryException;
 use MobileStock\LaravelResilience\Queue\Middleware\RetryDeadlockMiddleware;
+use Exception;
 
 it('should release job when deadlock occurs', function () {
     $middleware = new RetryDeadlockMiddleware();
