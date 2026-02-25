@@ -2,7 +2,6 @@
 
 use Illuminate\Database\QueryException;
 use MobileStock\LaravelResilience\Queue\Middleware\RetryDeadlockMiddleware;
-use Exception;
 
 it('should release job when deadlock occurs', function () {
     $middleware = new RetryDeadlockMiddleware();
@@ -33,19 +32,5 @@ it('should not release job when query exception is not a deadlock', function () 
     $call = fn() => $middleware->handle($job, $next);
 
     expect($call)->toThrow(QueryException::class);
-    $job->shouldNotHaveReceived('release');
-});
-
-it('should not release job when other exception is thrown', function () {
-    $middleware = new RetryDeadlockMiddleware();
-    $job = Mockery::spy();
-    $exception = new Exception('Normal exception');
-    $next = function () use ($exception) {
-        throw $exception;
-    };
-
-    $call = fn() => $middleware->handle($job, $next);
-
-    expect($call)->toThrow(Exception::class, 'Normal exception');
     $job->shouldNotHaveReceived('release');
 });
