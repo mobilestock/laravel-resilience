@@ -1,6 +1,6 @@
 {
   "name": "mobilestock/laravel-resilience",
-  "description": "Laravel Resilience provides tools to handle failures and improve application reliability, such as circuit breakers, retries, and timeouts.",
+  "description": "Laravel Resilience provides tools to handle failures and improve application reliability through robust retry strategies and queue middlewares.",
   "type": "library",
   "license": "MIT",
   "authors": [
