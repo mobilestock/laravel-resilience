@@ -17,7 +17,7 @@ it('should release job when retryable exception is thrown', function () {
     $job->shouldHaveReceived('release')->once()->with(Mockery::type('int'));
 });
 
-it('should fail job when non retryable exception is thrown', function () {
+it('should re-throw exception and not release job when non-retryable exception is thrown', function () {
     $middleware = new RetryableExceptionMiddleware();
     $job = Mockery::spy();
     $exception = new Exception('Normal exception');
@@ -28,5 +28,5 @@ it('should fail job when non retryable exception is thrown', function () {
     $call = fn() => $middleware->handle($job, $next);
 
     expect($call)->toThrow(Exception::class, 'Normal exception');
-    $job->shouldNotHaveReceived('fail');
+    $job->shouldNotHaveReceived('release');
 });
