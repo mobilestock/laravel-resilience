@@ -44,11 +44,9 @@ class HttpClientRetryMiddleware
             return null;
         }
 
-        if (is_numeric($retryAfter)) {
-            return (int) $retryAfter;
-        }
+        $delay = is_numeric($retryAfter) ? (int) $retryAfter : $this->parseRetryAfterDate($retryAfter);
 
-        return $this->parseRetryAfterDate($retryAfter);
+        return $delay > 0 ? $delay : null;
     }
 
     protected function parseRetryAfterDate(string $retryAfter): ?int
@@ -59,6 +57,6 @@ class HttpClientRetryMiddleware
             return null;
         }
 
-        return max(0, $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp());
+        return $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp();
     }
 }
