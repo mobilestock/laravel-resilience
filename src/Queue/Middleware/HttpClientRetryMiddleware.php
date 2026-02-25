@@ -5,8 +5,8 @@ namespace MobileStock\LaravelResilience\Queue\Middleware;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Response;
 use MobileStock\LaravelResilience\Queue\Middleware\Concerns\CalculatesBackoff;
-use Symfony\Component\HttpFoundation\Response;
 
 class HttpClientRetryMiddleware
 {
