@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use MobileStock\LaravelResilience\Queue\Middleware\HttpClientRetryMiddleware;
@@ -28,7 +29,7 @@ it('should re-throw exception and not release job when non-retryable exception i
     ],
     'RetryDeadlockMiddleware' => [
         new RetryDeadlockMiddleware(),
-        fn() => new Illuminate\Database\QueryException('connection', 'sql', [], new PDOException('non-deadlock')),
+        fn() => new QueryException('connection', 'sql', [], new PDOException('non-deadlock')),
     ],
     'RetryableExceptionMiddleware' => [new RetryableExceptionMiddleware(), fn() => new Exception('Normal exception')],
 ]);
