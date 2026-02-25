@@ -9,8 +9,8 @@ class RetryDeadlockMiddleware
 {
     use CalculatesBackoff;
 
-    protected const string SQLSTATE_DEADLOCK = '40001';
-    protected const int MYSQL_ERROR_DEADLOCK = 1213;
+    protected const SQLSTATE_DEADLOCK = '40001';
+    protected const MYSQL_ERROR_DEADLOCK = 1213;
 
     public function handle(object $job, callable $next): void
     {
