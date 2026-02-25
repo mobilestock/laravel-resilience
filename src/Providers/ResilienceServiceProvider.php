@@ -2,23 +2,24 @@
 
 namespace MobileStock\LaravelResilience\Providers;
 
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\ServiceProvider;
 
 class ResilienceServiceProvider extends ServiceProvider
 {
-    public function boot(): void
+    public function boot(Dispatcher $bus, Repository $config): void
     {
         if ($this->app->runningInConsole()) {
             $this->publishes(
                 [
-                    __DIR__ . '/../../config/resilience.php' => config_path('resilience.php'),
+                    __DIR__ . '/../../config/resilience.php' => $this->app->configPath('resilience.php'),
                 ],
                 'resilience-config'
             );
         }
 
-        Bus::pipeThrough(config('resilience.middlewares'));
+        $bus->pipeThrough($config->get('resilience.middlewares'));
     }
 
     public function register(): void
