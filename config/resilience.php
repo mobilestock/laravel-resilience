@@ -9,11 +9,6 @@ return [
     | Here you can configure the default settings for your resilience strategies.
     |
     */
-
-    'defaults' => [
-        //
-    ],
-
     'middlewares' => [
         MobileStock\LaravelResilience\Queue\Middleware\FailJobOnExceptionMiddleware::class,
         MobileStock\LaravelResilience\Queue\Middleware\RetryableExceptionMiddleware::class,
