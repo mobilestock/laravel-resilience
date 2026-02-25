@@ -4,10 +4,7 @@ namespace MobileStock\LaravelResilience\Providers;
 
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Config\Repository;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
-use MobileStock\LaravelResilience\Console\ListenCommand;
-use MobileStock\LaravelResilience\Console\WorkCommand;
 use Illuminate\Queue\Console\ListenCommand as LaravelListenCommand;
 use Illuminate\Queue\Console\WorkCommand as LaravelWorkCommand;
 
@@ -23,19 +20,13 @@ class ResilienceServiceProvider extends ServiceProvider
                 'resilience-config'
             );
 
-            $this->app->extend(LaravelWorkCommand::class, function (
-                LaravelWorkCommand $command,
-                Application $app
-            ): WorkCommand {
-                return new WorkCommand($app['queue.worker'], $app['cache.store']);
-            });
+            foreach ([LaravelWorkCommand::class, LaravelListenCommand::class] as $command) {
+                $this->app->extend($command, function ($command) {
+                    $command->getDefinition()->getOption('tries')->setDefault(0);
 
-            $this->app->extend(LaravelListenCommand::class, function (
-                LaravelListenCommand $command,
-                Application $app
-            ): ListenCommand {
-                return new ListenCommand($app['queue.listener']);
-            });
+                    return $command;
+                });
+            }
         }
 
         $bus->pipeThrough($config->get('resilience.middlewares'));
