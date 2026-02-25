@@ -2,6 +2,7 @@
 
 use MobileStock\LaravelResilience\Contracts\RetryableException;
 use MobileStock\LaravelResilience\Queue\Middleware\RetryableExceptionMiddleware;
+use Exception;
 
 it('should release job when retryable exception is thrown', function () {
     $middleware = new RetryableExceptionMiddleware();
