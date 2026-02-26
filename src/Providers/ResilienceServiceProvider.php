@@ -30,6 +30,7 @@ class ResilienceServiceProvider extends ServiceProvider
                 return $command;
             });
         }
+
         $bus->pipeThrough($config->get('resilience.middlewares'));
     }
 
