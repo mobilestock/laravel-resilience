@@ -2,6 +2,7 @@
 
 namespace MobileStock\LaravelResilience\Providers;
 
+use Illuminate\Console\Command;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\ServiceProvider;
@@ -24,7 +25,7 @@ class ResilienceServiceProvider extends ServiceProvider
         );
 
         foreach ([LaravelWorkCommand::class, LaravelListenCommand::class] as $command) {
-            $this->app->extend($command, function ($command) {
+            $this->app->extend($command, function (Command $command) {
                 $command->getDefinition()->getOption('tries')->setDefault(0);
 
                 return $command;
