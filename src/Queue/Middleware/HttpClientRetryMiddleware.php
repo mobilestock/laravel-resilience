@@ -57,6 +57,8 @@ class HttpClientRetryMiddleware
             return null;
         }
 
-        return $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp();
+        $delay = $date->getTimestamp() - (new DateTimeImmutable())->getTimestamp();
+
+        return $delay;
     }
 }
