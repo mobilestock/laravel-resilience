@@ -4,10 +4,10 @@ namespace MobileStock\LaravelResilience\Queue\Middleware;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use GuzzleHttp\Exception\ClientException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Response;
 use MobileStock\LaravelResilience\Queue\Middleware\Concerns\CalculatesBackoff;
+use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 class HttpClientRetryMiddleware
@@ -35,12 +35,12 @@ class HttpClientRetryMiddleware
         }
     }
 
-    protected function findHttpException(Throwable $exception): RequestException|ClientException|null
+    protected function findHttpException(Throwable $exception): ?Throwable
     {
         $current = $exception;
 
         while ($current !== null) {
-            if ($current instanceof RequestException || $current instanceof ClientException) {
+            if ($current instanceof RequestException || $this->hasResponse($current)) {
                 return $current;
             }
 
@@ -50,21 +50,21 @@ class HttpClientRetryMiddleware
         return null;
     }
 
-    protected function shouldRetry(RequestException|ClientException $exception): bool
+    protected function shouldRetry(Throwable $exception): bool
     {
         return $this->getStatusCode($exception) === Response::HTTP_TOO_MANY_REQUESTS;
     }
 
-    protected function getStatusCode(RequestException|ClientException $exception): ?int
+    protected function getStatusCode(Throwable $exception): ?int
     {
         if ($exception instanceof RequestException) {
             return $exception->response?->status();
         }
 
-        return $exception->getResponse()?->getStatusCode();
+        return $this->getResponse($exception)?->getStatusCode();
     }
 
-    protected function getRetryAfter(RequestException|ClientException $exception): ?int
+    protected function getRetryAfter(Throwable $exception): ?int
     {
         $retryAfter = $this->getRetryAfterHeader($exception);
 
@@ -77,15 +77,37 @@ class HttpClientRetryMiddleware
         return $delay > 0 ? $delay : null;
     }
 
-    protected function getRetryAfterHeader(RequestException|ClientException $exception): ?string
+    protected function getRetryAfterHeader(Throwable $exception): ?string
     {
         if ($exception instanceof RequestException) {
             return $exception->response?->header('Retry-After');
         }
 
-        $header = $exception->getResponse()?->getHeaderLine('Retry-After');
+        $response = $this->getResponse($exception);
+
+        if (!$response) {
+            return null;
+        }
+
+        $header = $response->getHeaderLine('Retry-After');
 
         return $header !== '' ? $header : null;
+    }
+
+    protected function hasResponse(Throwable $exception): bool
+    {
+        return $this->getResponse($exception) !== null;
+    }
+
+    protected function getResponse(Throwable $exception): ?ResponseInterface
+    {
+        if (!is_callable([$exception, 'getResponse'])) {
+            return null;
+        }
+
+        $response = call_user_func([$exception, 'getResponse']);
+
+        return $response instanceof ResponseInterface ? $response : null;
     }
 
     protected function parseRetryAfterDate(string $retryAfter): ?int
